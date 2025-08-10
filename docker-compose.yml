@@ -1,0 +1,14 @@
+
+services:
+  backup_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: backup-service:latest
+    container_name: python_backup_service
+    volumes:
+      - /www/python-applications:/www/python-applications:ro
+      - /www/python_backup:/www/python_backup
+    env_file:
+      - .env
+    restart: unless-stopped
