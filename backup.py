@@ -84,6 +84,7 @@ def upload_to_ftp(local_file, remote_path):
             files.sort(reverse=True)
             for old_file in files[5:]:
                 ftp.delete(old_file)
+        os.remove(local_file)
     except Exception as e:
         print(f"FTP upload failed: {e}")
         exit(1)
