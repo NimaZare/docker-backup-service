@@ -1,7 +1,6 @@
 import os
 import zipfile
 import datetime
-import subprocess
 import shutil
 from ftplib import FTP
 from dotenv import load_dotenv
@@ -45,10 +44,12 @@ for name, src in SOURCES.items():
         os.remove(os.path.join(dest, backup))
 
 FINAL_ZIP = os.path.join(BACKUP_DIR, f"ALL_BACKUP_{TODAY}.zip")
-with zipfile.ZipFile(FINAL_ZIP, 'w') as zipf:
-    for root, dirs, files in os.walk(BACKUP_DIR):
-        for file in files:
-            zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), BACKUP_DIR))
+with zipfile.ZipFile(FINAL_ZIP, 'w', allowZip64=True) as zipf:
+    for name in SOURCES.keys():
+        today_zip = os.path.join(BACKUP_DIR, name, f"{TODAY}.zip")
+        if os.path.exists(today_zip):
+            zipf.write(today_zip, os.path.join(name, f"{TODAY}.zip"))
+
 
 def check_ftp_connection(host):
     try:
@@ -80,15 +81,22 @@ def upload_to_ftp(local_file, remote_path):
             with open(local_file, 'rb') as file:
                 ftp.storbinary(f"STOR {os.path.basename(local_file)}", file)
             
-            files = ftp.nlst()
+            files = [f for f in ftp.nlst() if f not in ('.', '..')]
             files.sort(reverse=True)
             for old_file in files[5:]:
-                ftp.delete(old_file)
-        os.remove(local_file)
+                try:
+                    ftp.delete(old_file)
+                except Exception as e:
+                    print(f"Could not delete {old_file}: {e}")
+        
+        print(f"--------------------\n({TODAY}) backup completed successfully\n")
     except Exception as e:
         print(f"FTP upload failed: {e}")
         exit(1)
 
 upload_to_ftp(FINAL_ZIP, REMOTE_DIR)
 
-print(f"--------------------\n({TODAY}) backup completed successfully\n")
+if os.path.exists(FINAL_ZIP):
+    os.remove(FINAL_ZIP)
+
+#+++++++++++++++++++++++++++ END ++++++++++++++++++++++++++
